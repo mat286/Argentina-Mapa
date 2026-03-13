@@ -329,6 +329,7 @@ body,
   align-items: center;
   justify-content: center;
   box-shadow: none;
+  will-change: transform;
 }
 
 .province-label-marker.leaflet-div-icon {
@@ -337,22 +338,24 @@ body,
 }
 
 .province-label {
+  position: absolute;
+  left: 0;
+  top: 0;
   display: inline-block;
   font-size: 11px;
   color: #111;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.1px;
-  line-height: 1;
-  padding: 0;
-  border-radius: 0;
-  background: transparent;
-  border: none;
+  line-height: 1.05;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(0, 0, 0, 0.15);
   white-space: nowrap;
+  text-align: center;
   text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95),
-    0 -1px 0 rgba(255, 255, 255, 0.95),
-    1px 0 0 rgba(255, 255, 255, 0.95),
-    -1px 0 0 rgba(255, 255, 255, 0.95);
+    0 1px 0 rgba(255, 255, 255, 0.85),
+    0 -1px 0 rgba(255, 255, 255, 0.85);
   pointer-events: none;
   transition: font-size 0.12s ease-out, opacity 0.12s ease-out;
 }

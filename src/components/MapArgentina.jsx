@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import useAppStore from '../state/useAppStore';
@@ -16,16 +16,38 @@ const CUSTOM_LABEL_COORDS = {
   'Islas Malvinas': { lat: -51.75, lon: -59.05 },
 };
 
-// Ajustes finos para provincias chicas o con centroides menos legibles.
-const LABEL_OFFSETS = {
-  'Ciudad Autónoma de Buenos Aires': { lat: -0.2, lon: 0.35 },
-  'Tierra del Fuego, Antártida e Islas del Atlántico Sur': { lat: 0.55, lon: 0 },
-  'Santa Fe': { lat: 0.15, lon: 0 },
-  'Entre Ríos': { lat: -0.1, lon: 0.15 },
+// Ajustes finos por provincia para mejorar legibilidad.
+// Regla: lat+ sube, lat- baja; lon+ derecha, lon- izquierda.
+const LABEL_NUDGES = {
+  'Ciudad Autónoma de Buenos Aires': { lat: -0.1, lon: 0.34 },
+  'Buenos Aires': { lat: 0.05, lon: -0.05 },
+  Catamarca: { lat: -0.12, lon: -0.18 },
+  'Tucumán': { lat: 0.16, lon: 0.2 },
+  Salta: { lat: -0.28, lon: 0 },
+  'Entre Ríos': { lat: -0.02, lon: 0.14 },
+  'Santa Fe': { lat: 0.04, lon: -0.06 },
+  'La Rioja': { lat: 0.02, lon: -0.12 },
+  'San Juan': { lat: -0.06, lon: -0.08 },
+  Mendoza: { lat: 0.02, lon: -0.1 },
+  Neuquén: { lat: 0.04, lon: -0.07 },
+  Misiones: { lat: 0.02, lon: 0.08 },
+  Corrientes: { lat: 0.02, lon: 0.06 },
+  'Río Negro': { lat: 0.04, lon: -0.08 },
+  Chubut: { lat: 0.03, lon: -0.05 },
+  'Santa Cruz': { lat: 0.06, lon: -0.07 },
 };
 
-function getShortProvinceName(name) {
-  return name;
+// Overrides de texto (acepta <br/> para multilinea).
+const LABEL_TEXT_OVERRIDES = {
+  'Santiago del Estero': 'Santiago<br/>del<br/>Estero',
+};
+
+const ZERO_NUDGE = { lat: 0, lon: 0 };
+
+function getZoomLabelSize(zoom) {
+  if (zoom < 5) return 10;
+  if (zoom <= 6) return 12;
+  return 14;
 }
 
 function MapUpdater() {
@@ -40,18 +62,18 @@ function ProvinceLabels({ geojson }) {
   const map = useMap();
   const showLabels = useAppStore((s) => s.showLabels);
 
-  const addLabelMarker = useCallback((lat, lon, text, markersList, options = {}) => {
+  const addLabelMarker = useCallback((lat, lon, htmlText, markersList) => {
     const marker = L.marker([lat, lon], {
       icon: L.divIcon({
         className: 'province-label-marker',
-        html: `<span class="province-label">${text}</span>`,
-        iconSize: [170, 26],
-        iconAnchor: [85, 13],
+        html: `<span class="province-label">${htmlText}</span>`,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
       }),
       interactive: false,
     });
     marker.addTo(map);
-    markersList.push({ marker, name: text, ...options });
+    markersList.push({ marker, name: htmlText.replace(/<br\s*\/?\>/g, ' ') });
   }, [map]);
 
   useEffect(() => {
@@ -61,57 +83,51 @@ function ProvinceLabels({ geojson }) {
 
     geojson.features.forEach((feature) => {
       const name = feature.properties.nombre;
-      const centroid = feature.properties.centroide;
-      if (!centroid) return;
-
-      const offset = LABEL_OFFSETS[name] || { lat: 0, lon: 0 };
-      const shortName = getShortProvinceName(name);
+      const center = L.geoJSON(feature).getBounds().getCenter();
+      const nudge = LABEL_NUDGES[name] || ZERO_NUDGE;
+      const labelHtml = LABEL_TEXT_OVERRIDES[name] || name;
 
       const customCoords = CUSTOM_LABEL_COORDS[name];
       const lat = customCoords
         ? customCoords.lat
-        : centroid.lat + offset.lat + GLOBAL_LABEL_SHIFT.lat;
+        : center.lat + GLOBAL_LABEL_SHIFT.lat + nudge.lat;
       const lon = customCoords
         ? customCoords.lon
-        : centroid.lon + offset.lon + GLOBAL_LABEL_SHIFT.lon;
+        : center.lng + GLOBAL_LABEL_SHIFT.lon + nudge.lon;
 
-      addLabelMarker(lat, lon, shortName, markerEntries, {
-        isSpecial: shortName === 'Tierra del Fuego, Antártida e Islas del Atlántico Sur',
-      });
+      addLabelMarker(lat, lon, labelHtml, markerEntries);
     });
-
-    // El GeoJSON del IGN no trae Malvinas como feature independiente, se agrega etiqueta explícita.
-    const malvinas = CUSTOM_LABEL_COORDS['Islas Malvinas'];
-    addLabelMarker(malvinas.lat, malvinas.lon, 'Islas Malvinas', markerEntries, {
-      isSpecial: true,
-    });
-
-    const denseProvinceNames = new Set([
-      'Ciudad Autónoma de Buenos Aires',
-      'Tucumán',
-      'Entre Ríos',
-      'Santa Fe',
-      'Misiones',
-      'Corrientes',
-    ]);
 
     const applyZoomLabelStyle = () => {
       const zoom = map.getZoom();
+      const fontSize = getZoomLabelSize(zoom);
+      const occupied = [];
 
-      markerEntries.forEach(({ marker, name, isSpecial }) => {
+      markerEntries.forEach(({ marker }) => {
         const labelEl = marker.getElement()?.querySelector('.province-label');
         if (!labelEl) return;
 
-        const baseSize = 8 + (zoom - 3) * 1.2;
-        const specialBonus = isSpecial ? 0.8 : 0;
-        const fontSize = Math.max(9, Math.min(16, baseSize + specialBonus));
-
-        let visible = true;
-        if (zoom < 4.6 && denseProvinceNames.has(name)) visible = false;
-        if (zoom < 4.2 && name === 'Islas Malvinas') visible = false;
-
         labelEl.style.fontSize = `${fontSize}px`;
-        labelEl.style.display = visible ? 'inline-block' : 'none';
+        labelEl.style.display = 'inline-block';
+
+        // Logica simple de anti-superposicion: desplaza levemente labels cercanos en pantalla.
+        const point = map.latLngToLayerPoint(marker.getLatLng());
+        let dx = 0;
+        let dy = 0;
+
+        occupied.forEach((p) => {
+          const nearX = Math.abs(point.x + dx - p.x) < 55;
+          const nearY = Math.abs(point.y + dy - p.y) < 18;
+          if (nearX && nearY) {
+            dy += 14;
+            dx += p.shiftDir;
+          }
+        });
+
+        const shiftDir = occupied.length % 2 === 0 ? 8 : -8;
+        occupied.push({ x: point.x + dx, y: point.y + dy, shiftDir });
+
+        labelEl.style.transform = `translate(-50%, -50%) translate(${dx}px, ${dy}px)`;
       });
     };
 

@@ -11,7 +11,28 @@ Aplicacion web en React + Vite para visualizar datos economicos por provincia en
 - `Zustand` para estado global
 - `html-to-image` para exportar imagen
 
-## 2. Como ejecutar
+## 2. Fuentes de datos geograficos
+
+El mapa combina dos fuentes independientes:
+
+### 2.1 Limites provinciales (poligonos coloreados)
+
+- **Fuente**: Instituto Geografico Nacional (IGN) de Argentina
+- **URL de descarga**: `https://infra.datos.gob.ar/georef/provincias.geojson`
+- **Archivo local**: `src/data/argentina-provincias.json`
+- Cada feature del GeoJSON contiene `"fuente":"IGN"` embebido en sus propiedades, confirmando la trazabilidad al dato oficial.
+- La geometria describe los limites de las 24 jurisdicciones (23 provincias + CABA).
+
+### 2.2 Fondo del mapa (paises vecinos, oceano, rios, topografia)
+
+- **Tiles servidos por**: CARTO (`basemaps.cartocdn.com`)
+- **Datos subyacentes**: OpenStreetMap (OSM), proyecto colaborativo de geodatos globales licenciado bajo ODbL (Open Database License).
+- **Estilo usado**: `light_nolabels` — fondo gris/blanco sin etiquetas externas, para no interferir con las etiquetas propias de la app.
+- La atribucion legal ya figura en el mapa: `© OpenStreetMap © CARTO`.
+
+> **Nota para cumplimiento**: Leaflet renderiza ambas capas en proyeccion Web Mercator (EPSG:3857), que es estandar para mapas web interactivos pero no es una proyeccion cartometrica certificada. Si se requiere "escala real" en sentido estricto (medicion de areas o distancias), se deberia usar proyeccion Gauss-Kruger (POSGAR) y exportar desde un SIG como QGIS.
+
+## 3. Como ejecutar
 
 ```bash
 npm install
@@ -52,7 +73,7 @@ src/
   main.jsx
 ```
 
-## 4. Flujo de datos (de Excel a mapa)
+## 5. Flujo de datos (de Excel a mapa)
 
 1. Usuario sube archivo en `ExcelUploader.jsx`.
 2. `parseExcel.js` parsea hoja 1 y normaliza numeros.
@@ -63,9 +84,9 @@ src/
 7. `MapArgentina.jsx` pinta provincias y labels.
 8. `Legend.jsx` muestra rangos y colores.
 
-## 5. Guia rapida: donde cambiar cada cosa
+## 6. Guia rapida: donde cambiar cada cosa
 
-### 5.1 Colores y paletas
+### 6.1 Colores y paletas
 
 Archivo: `src/utils/colorScales.js`
 
@@ -81,7 +102,7 @@ Archivo: `src/state/useAppStore.js`
 - `palette`: paleta default al iniciar.
 - `resetScale()`: paleta al resetear.
 
-### 5.2 Metodos de distribucion (lineal, log, quintiles)
+### 6.2 Metodos de distribucion (lineal, log, quintiles)
 
 Archivo: `src/utils/colorScales.js`
 
@@ -92,21 +113,22 @@ Archivo: `src/components/ControlPanel.jsx`
 
 - `METHOD_LABELS`: nombres visibles del selector.
 
-### 5.3 Labels de provincias (texto sobre mapa)
+### 6.3 Labels de provincias (texto sobre mapa)
 
 Archivo: `src/components/MapArgentina.jsx`
 
-- `LABEL_OFFSETS`: microajustes por provincia.
-- `CUSTOM_LABEL_COORDS`: posiciones manuales (ej. Malvinas).
-- `GLOBAL_LABEL_SHIFT`: corrimiento global.
-- `applyZoomLabelStyle()`: visibilidad y tamano segun zoom.
+- `LABEL_NUDGES`: diccionario con microajustes por provincia. Regla: `lat+` sube, `lat-` baja, `lon+` derecha, `lon-` izquierda.
+- `LABEL_TEXT_OVERRIDES`: texto alternativo por provincia (soporta `<br/>` para multilínea).
+- `CUSTOM_LABEL_COORDS`: coordenadas manuales para provincias con geometria problematica (actualmente solo Tierra del Fuego).
+- `getZoomLabelSize(zoom)`: tamano de fuente segun nivel de zoom (3 niveles).
+- Los centros de cada label se calculan con `L.geoJSON(feature).getBounds().getCenter()` para mayor precision geometrica.
 
 Archivo: `src/App.css`
 
 - `.province-label`: tipografia de labels.
 - `.province-label-marker`: contenedor de label.
 
-### 5.4 Tooltip y ranking
+### 6.4 Tooltip y ranking
 
 Archivo: `src/components/Tooltip.jsx`
 
@@ -116,7 +138,7 @@ Archivo: `src/components/RankingTable.jsx`
 
 - Columnas y formato del ranking lateral.
 
-### 5.5 Leyenda
+### 6.5 Leyenda
 
 Archivo: `src/components/Legend.jsx`
 
@@ -126,7 +148,7 @@ Archivo: `src/App.css`
 
 - `.legend`: posicion (izquierda/derecha), colores, tamano.
 
-### 5.6 Carga y parsing de Excel
+### 6.6 Carga y parsing de Excel
 
 Archivo: `src/components/ExcelUploader.jsx`
 
@@ -138,7 +160,7 @@ Archivo: `src/utils/parseExcel.js`
 - Conversion de formato argentino (`1.234,56`).
 - Reglas para ignorar fila `Total`.
 
-### 5.7 Matching de provincias
+### 6.7 Matching de provincias
 
 Archivo: `src/utils/provinceMatching.js`
 
@@ -146,7 +168,7 @@ Archivo: `src/utils/provinceMatching.js`
 - Reglas de normalizacion.
 - Fuzzy matching (Levenshtein).
 
-### 5.8 Exportacion de imagen
+### 6.8 Exportacion de imagen
 
 Archivo: `src/components/ControlPanel.jsx`
 
@@ -161,7 +183,7 @@ Archivo: `src/components/MapArgentina.jsx`
 
 - `TileLayer crossOrigin="anonymous"`: mejora compatibilidad de exportacion.
 
-## 6. Configuracion de mapa
+## 7. Configuracion de mapa
 
 Archivo: `src/components/MapArgentina.jsx`
 
@@ -171,7 +193,7 @@ Parametros importantes de `MapContainer`:
 - `wheelPxPerZoomLevel`, `wheelDebounceTime`: sensibilidad de rueda.
 - `center`, `zoom`: encuadre inicial.
 
-## 7. Estado global (Zustand)
+## 8. Estado global (Zustand)
 
 Archivo: `src/state/useAppStore.js`
 
@@ -192,7 +214,7 @@ Archivo: `src/state/useAppStore.js`
 - `setNormalizeEnabled`, `setShowLabels`, `setShowRanking`
 - `resetScale`, `resetAll`
 
-## 8. Limpieza de codigo realizada
+## 9. Limpieza de codigo realizada
 
 En esta iteracion se limpiaron estos puntos sin alterar comportamiento:
 
@@ -200,7 +222,7 @@ En esta iteracion se limpiaron estos puntos sin alterar comportamiento:
 - Se removio helper redundante de nombres en `MapArgentina.jsx`.
 - Se quitaron variables no usadas (`nameCol`, `valueCol`) en `ExcelUploader.jsx`.
 
-## 9. Problemas comunes y solucion
+## 10. Problemas comunes y solucion
 
 ### No abre desde otra PC
 
@@ -215,8 +237,8 @@ En esta iteracion se limpiaron estos puntos sin alterar comportamiento:
 
 ### Labels se pisan
 
-- Ajustar umbrales en `applyZoomLabelStyle()`.
-- Ajustar `LABEL_OFFSETS` y `GLOBAL_LABEL_SHIFT`.
+- Ajustar `LABEL_NUDGES` en `MapArgentina.jsx` para mover individualmente cada label.
+- Para texto muy largo, agregar la provincia a `LABEL_TEXT_OVERRIDES` con `<br/>` para partir en líneas.
 
 ## 10. Recomendaciones para futuros cambios
 
