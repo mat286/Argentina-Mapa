@@ -45,7 +45,7 @@ Para build de produccion:
 npm run build
 ```
 
-## 3. Estructura del proyecto
+## 4. Estructura del proyecto
 
 ```text
 src/
@@ -56,6 +56,9 @@ src/
     MapArgentina.jsx
     RankingTable.jsx
     Tooltip.jsx
+    BicontinentalInset.jsx
+    CabaInset.jsx
+    ExportCabaOverlay.jsx
   hooks/
     useColorScale.js
     useMapData.js
@@ -183,6 +186,46 @@ Archivo: `src/components/MapArgentina.jsx`
 
 - `TileLayer crossOrigin="anonymous"`: mejora compatibilidad de exportacion.
 
+### 6.9 Insets (bicontinental y CABA)
+
+Archivo: `src/components/BicontinentalInset.jsx`
+
+- Renderiza el cuarteron bicontinental (incluyendo Antartida) en un mapa no interactivo.
+- `BICONTINENTAL_BOUNDS`: define el encuadre del inset.
+- `ViewportRectangle`: dibuja un rectangulo con el viewport actual del mapa principal usando `mapBounds`.
+
+Archivo: `src/components/CabaInset.jsx`
+
+- Renderiza un inset dedicado a CABA con contexto de la provincia de Buenos Aires.
+- Soporta `variant="default"` y `variant="export"` para distintos niveles de zoom/estilo.
+
+Archivo: `src/App.jsx`
+
+- `.map-insets`: contenedor visual de insets.
+- En modo normal muestra CABA + bicontinental; en exportacion A4 se oculta el inset normal de CABA.
+
+### 6.10 Overlay de exportacion CABA (callout)
+
+Archivo: `src/components/ExportCabaOverlay.jsx`
+
+- Muestra un recuadro de CABA y una linea conectora durante exportacion.
+- Usa `exportCabaAnchorPoint` para conectar la posicion real de CABA en el mapa principal con el recuadro ampliado.
+
+Archivo: `src/components/MapArgentina.jsx`
+
+- `ExportCabaAnchorUpdater`: actualiza el punto ancla de CABA al mover/zoomear/redimensionar.
+
+Archivo: `src/App.css`
+
+- `.export-caba-overlay`, `.export-caba-path`, `.caba-inset--export-callout`: estilos del callout para exportacion.
+
+### 6.11 Formato de valores
+
+Archivo: `src/utils/colorScales.js`
+
+- `formatNumber()`: actualmente convierte los valores a millones antes de formatear (`valor / 1000000`).
+- Si se necesita mostrar valor absoluto, quitar esa conversion.
+
 ## 7. Configuracion de mapa
 
 Archivo: `src/components/MapArgentina.jsx`
@@ -206,12 +249,16 @@ Archivo: `src/state/useAppStore.js`
 - `method`, `palette`, `numRanges`, `normalizeEnabled`
 - `showLabels`, `showRanking`
 - `hoveredProvince`
+- `isExportingImage`
+- `mapBounds`
+- `exportCabaAnchorPoint`
 
 ### Acciones
 
 - `setFileData`, `setMatchingResults`
 - `setMethod`, `setPalette`, `setNumRanges`
 - `setNormalizeEnabled`, `setShowLabels`, `setShowRanking`
+- `setHoveredProvince`, `setMapBounds`, `setIsExportingImage`, `setExportCabaAnchorPoint`
 - `resetScale`, `resetAll`
 
 ## 9. Limpieza de codigo realizada
@@ -234,13 +281,19 @@ En esta iteracion se limpiaron estos puntos sin alterar comportamiento:
 - Asegurar `waitForMapTiles()`.
 - Revisar `crossOrigin` en `TileLayer`.
 - Aumentar `pixelRatio` en `toPng`.
+- Revisar que `window.currentMapInstance` exista (se setea desde `MapUpdater` en `MapArgentina.jsx`).
+
+### Exportacion no sale en formato vertical A4
+
+- Verificar en `ControlPanel.jsx` el seteo temporal a `793x1123`.
+- Revisar `paddingTopLeft` y `paddingBottomRight` del `fitBounds` de exportacion.
 
 ### Labels se pisan
 
 - Ajustar `LABEL_NUDGES` en `MapArgentina.jsx` para mover individualmente cada label.
 - Para texto muy largo, agregar la provincia a `LABEL_TEXT_OVERRIDES` con `<br/>` para partir en líneas.
 
-## 10. Recomendaciones para futuros cambios
+## 11. Recomendaciones para futuros cambios
 
 - Mantener nombres de claves de paleta sincronizados entre:
   - `COLOR_PALETTES` (utils)

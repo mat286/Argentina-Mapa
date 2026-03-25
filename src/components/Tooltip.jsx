@@ -4,8 +4,10 @@ import { formatNumber } from '../utils/colorScales';
 
 export default function MapTooltip() {
   const hoveredProvince = useAppStore((s) => s.hoveredProvince);
+  const isExportingImage = useAppStore((s) => s.isExportingImage);
   const { provinceValues, isDataReady } = useMapData();
 
+  if (isExportingImage) return null;
   if (!hoveredProvince) return null;
 
   const value = provinceValues.get(hoveredProvince);

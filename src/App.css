@@ -55,6 +55,26 @@ body,
   flex: 1;
   position: relative;
   overflow: hidden;
+  transition: none;
+}
+
+.main-area.export-mode {
+  background: #fff;
+}
+
+/* Fondo neutro durante exportación, evitando el azul oscuro del tema principal. */
+.main-area.export-mode .map-container .leaflet-container {
+  background: #eef1f4;
+}
+
+/* En exportación se oculta la cartografía base para no mostrar países limítrofes. */
+.main-area.export-mode .map-container .leaflet-tile-pane {
+  display: none;
+}
+
+/* También se ocultan controles nativos de Leaflet en la imagen exportada. */
+.main-area.export-mode .leaflet-control-container {
+  display: none;
 }
 
 /* ===== Control Panel ===== */
@@ -397,7 +417,7 @@ body,
 .legend {
   position: absolute;
   bottom: 24px;
-  right: 16px;
+  left: 16px;
   background: rgba(22, 33, 62, 0.95);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -533,4 +553,114 @@ body,
 
 .sidebar::-webkit-scrollbar-thumb:hover {
   background: var(--accent);
+}
+
+/* ===== Map Insets (cuarteron bicontinental + CABA) ===== */
+.map-insets {
+  position: absolute;
+  right: 12px;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 800;
+  pointer-events: none;
+}
+
+.bicontinental-inset,
+.caba-inset {
+  background: #fff;
+  border: 2px solid #4a7a8a;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+}
+
+.bicontinental-inset {
+  width: 170px;
+  height: 250px;
+}
+
+.caba-inset {
+  width: 170px;
+  height: 145px;
+}
+
+.inset-label {
+  background: rgba(22, 33, 62, 0.88);
+  color: #e0e0e0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 4px 3px;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.inset-map-wrapper {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Deshabilitar cursor de arrastre en insets */
+.bicontinental-inset .leaflet-container,
+.caba-inset .leaflet-container {
+  cursor: default !important;
+  background: #ddeef5;
+}
+
+.bicontinental-inset .leaflet-grab,
+.caba-inset .leaflet-grab {
+  cursor: default !important;
+}
+
+/* ===== Export CABA callout ===== */
+.export-caba-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1200;
+  pointer-events: none;
+}
+
+.export-caba-connector {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.export-caba-path {
+  fill: none;
+  stroke: #b71c1c;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.export-caba-box {
+  position: absolute;
+  pointer-events: none;
+}
+
+.caba-inset--export-callout {
+  width: 100%;
+  height: 100%;
+  border: 2px solid #b71c1c;
+  box-shadow: 0 3px 9px rgba(0, 0, 0, 0.35);
+}
+
+.caba-inset--export {
+  width: 100%;
+  height: 100%;
+}
+
+.caba-inset--export .inset-label {
+  font-size: 0.58rem;
+  line-height: 1.16;
+  padding: 3px 2px;
 }

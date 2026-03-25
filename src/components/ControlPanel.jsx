@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import L from 'leaflet';
 import useAppStore from '../state/useAppStore';
 import ExcelUploader from './ExcelUploader';
 import { COLOR_PALETTES } from '../utils/colorScales';
@@ -33,6 +34,9 @@ export default function ControlPanel() {
   const setNormalizeEnabled = useAppStore((s) => s.setNormalizeEnabled);
   const setShowLabels = useAppStore((s) => s.setShowLabels);
   const setShowRanking = useAppStore((s) => s.setShowRanking);
+  const setHoveredProvince = useAppStore((s) => s.setHoveredProvince);
+  const setIsExportingImage = useAppStore((s) => s.setIsExportingImage);
+  const setExportCabaAnchorPoint = useAppStore((s) => s.setExportCabaAnchorPoint);
   const resetScale = useAppStore((s) => s.resetScale);
 
   const waitForMapTiles = (container, timeoutMs = 5000) =>
@@ -58,11 +62,54 @@ export default function ControlPanel() {
     const node = document.getElementById('map-export-target');
     if (!node || isExporting) return;
 
+    const map = window.currentMapInstance;
+    const originalCenter = map?.getCenter();
+    const originalZoom = map?.getZoom();
+    const originalSize = {
+      width: node.style.width,
+      height: node.style.height,
+      maxWidth: node.style.maxWidth,
+      maxHeight: node.style.maxHeight,
+    };
+
     try {
       setIsExporting(true);
+      setHoveredProvince(null);
+      setExportCabaAnchorPoint(null);
+      setIsExportingImage(true);
 
-      // Espera a que los tiles terminen de renderizar para evitar exportaciones borrosas/incompletas.
-      await waitForMapTiles(node);
+      // Espera breve para que se monte el overlay exclusivo de exportación.
+      await new Promise((r) => setTimeout(r, 100));
+
+      // A4 vertical: 793px × 1123px (a 96 DPI)
+      node.style.width = '793px';
+      node.style.height = '1123px';
+      node.style.maxWidth = '793px';
+      node.style.maxHeight = '1123px';
+
+      if (map) {
+        map.invalidateSize({ pan: false });
+
+        // Encadre fijo para exportación: Argentina continental en A4 vertical,
+        // dejando espacio para el callout de CABA a la derecha.
+        const exportBounds = L.latLngBounds([
+          [-54.9, -73.4],
+          [-21.5, -53.8],
+        ]);
+
+        map.fitBounds(exportBounds, {
+          paddingTopLeft: [32, 42],
+          paddingBottomRight: [220, 210],
+          animate: false,
+        });
+
+        await new Promise((r) => setTimeout(r, 240));
+        map.invalidateSize({ pan: false });
+      }
+
+      // Espera a que los tiles terminen de renderizar
+      await new Promise((r) => setTimeout(r, 360));
+      await waitForMapTiles(node, 7000);
 
       const dataUrl = await toPng(node, {
         backgroundColor: '#ffffff',
@@ -71,12 +118,27 @@ export default function ControlPanel() {
       });
 
       const link = document.createElement('a');
-      link.download = 'mapa-argentina.png';
+      link.download = 'mapa-argentina-a4.png';
       link.href = dataUrl;
       link.click();
     } catch (err) {
       console.error('Error exportando imagen:', err);
     } finally {
+      // Restaurar tamaño original
+      node.style.width = originalSize.width;
+      node.style.height = originalSize.height;
+      node.style.maxWidth = originalSize.maxWidth;
+      node.style.maxHeight = originalSize.maxHeight;
+
+      setIsExportingImage(false);
+      setExportCabaAnchorPoint(null);
+
+      // Restaurar vista original del mapa.
+      if (map && originalCenter && originalZoom != null) {
+        map.setView(originalCenter, originalZoom, { animate: false });
+        map.invalidateSize({ pan: false });
+      }
+
       setIsExporting(false);
     }
   };

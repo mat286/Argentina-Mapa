@@ -21,6 +21,9 @@ const useAppStore = create((set) => ({
 
   // --- Interacción del mapa ---
   hoveredProvince: null, // nombre de la provincia
+  mapBounds: null, // [[south, west], [north, east]] — viewport actual del mapa principal
+  isExportingImage: false,
+  exportCabaAnchorPoint: null,
 
   // --- Acciones ---
   setFileData: (fileName, rawData, parseErrors) =>
@@ -40,6 +43,9 @@ const useAppStore = create((set) => ({
   setShowLabels: (showLabels) => set({ showLabels }),
   setShowRanking: (showRanking) => set({ showRanking }),
   setHoveredProvince: (hoveredProvince) => set({ hoveredProvince }),
+  setMapBounds: (mapBounds) => set({ mapBounds }),
+  setIsExportingImage: (isExportingImage) => set({ isExportingImage }),
+  setExportCabaAnchorPoint: (exportCabaAnchorPoint) => set({ exportCabaAnchorPoint }),
 
   resetScale: () =>
     set({
@@ -64,6 +70,9 @@ const useAppStore = create((set) => ({
       showLabels: true,
       showRanking: false,
       hoveredProvince: null,
+      mapBounds: null,
+      isExportingImage: false,
+      exportCabaAnchorPoint: null,
     }),
 }));
 

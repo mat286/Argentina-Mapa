@@ -153,8 +153,10 @@ function buildQuantileBreaks(quantiles, min, max, colors) {
 /**
  * Formatea un número con separador de miles.
  */
-export function formatNumber(num) {
-  if (num == null || isNaN(num)) return '—';
+export function formatNumber(nu) {
+  if (nu == null || isNaN(nu)) return '—';
+  const num = Number(nu)/1000000; // Convertir a millones
+
   return num.toLocaleString('es-AR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,

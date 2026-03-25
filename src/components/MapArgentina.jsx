@@ -10,6 +10,7 @@ import 'leaflet/dist/leaflet.css';
 const ARGENTINA_CENTER = [-40, -64];
 const ARGENTINA_ZOOM = 4;
 const GLOBAL_LABEL_SHIFT = { lat: 0, lon: -0.22 };
+const CABA_COORDS = [-34.6144, -58.4459];
 
 const CUSTOM_LABEL_COORDS = {
   'Tierra del Fuego, Antártida e Islas del Atlántico Sur': { lat: -54.55, lon: -67.65 },
@@ -52,9 +53,62 @@ function getZoomLabelSize(zoom) {
 
 function MapUpdater() {
   const map = useMap();
+  const setMapBounds = useAppStore((s) => s.setMapBounds);
+
   useEffect(() => {
+    // Guardar la instancia del mapa globalmente para acceso desde ControlPanel (exportación)
+    window.currentMapInstance = map;
+
+    const emit = () => {
+      const b = map.getBounds();
+      setMapBounds([
+        [b.getSouth(), b.getWest()],
+        [b.getNorth(), b.getEast()],
+      ]);
+    };
+    emit();
+    map.on('moveend', emit);
+    map.on('zoomend', emit);
     map.invalidateSize();
-  }, [map]);
+    return () => {
+      map.off('moveend', emit);
+      map.off('zoomend', emit);
+      window.currentMapInstance = null;
+    };
+  }, [map, setMapBounds]);
+
+  return null;
+}
+
+function ExportCabaAnchorUpdater() {
+  const map = useMap();
+  const isExportingImage = useAppStore((s) => s.isExportingImage);
+  const setExportCabaAnchorPoint = useAppStore((s) => s.setExportCabaAnchorPoint);
+
+  useEffect(() => {
+    if (!isExportingImage) {
+      setExportCabaAnchorPoint(null);
+      return undefined;
+    }
+
+    const emitAnchor = () => {
+      const point = map.latLngToContainerPoint(CABA_COORDS);
+      setExportCabaAnchorPoint({ x: point.x, y: point.y });
+    };
+
+    emitAnchor();
+    map.on('moveend', emitAnchor);
+    map.on('zoomend', emitAnchor);
+    map.on('resize', emitAnchor);
+
+    return () => {
+      map.off('moveend', emitAnchor);
+      map.off('zoomend', emitAnchor);
+      map.off('resize', emitAnchor);
+      setExportCabaAnchorPoint(null);
+    };
+  }, [isExportingImage, map, setExportCabaAnchorPoint]);
+
   return null;
 }
 
@@ -242,6 +296,7 @@ const MapArgentina = memo(function MapArgentina() {
         )}
         <ProvinceLabels geojson={geojsonRaw} />
         <MapUpdater />
+        <ExportCabaAnchorUpdater />
       </MapContainer>
     </div>
   );
