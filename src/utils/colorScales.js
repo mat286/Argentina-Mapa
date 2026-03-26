@@ -155,7 +155,7 @@ function buildQuantileBreaks(quantiles, min, max, colors) {
  */
 export function formatNumber(nu) {
   if (nu == null || isNaN(nu)) return '—';
-  const num = Number(nu)/1000000; // Convertir a millones
+  const num = (Number(nu)/1000000).toFixed(1); // Convertir a millones
 
   return num.toLocaleString('es-AR', {
     minimumFractionDigits: 0,

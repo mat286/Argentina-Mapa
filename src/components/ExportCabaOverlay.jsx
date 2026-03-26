@@ -28,8 +28,13 @@ export default function ExportCabaOverlay() {
     <div className="export-caba-overlay" aria-hidden="true">
       <svg className="export-caba-connector" viewBox={`0 0 ${EXPORT_WIDTH} ${EXPORT_HEIGHT}`}>
         <polyline
-          className="export-caba-path"
           points={`${startX},${startY} ${midX},${midY} ${endX},${endY}`}
+          fill="none"
+          stroke="#b71c1c"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
         />
       </svg>
 

@@ -24,7 +24,7 @@ const LABEL_NUDGES = {
   'Buenos Aires': { lat: 0.05, lon: -0.05 },
   Catamarca: { lat: -0.12, lon: -0.18 },
   'Tucumán': { lat: 0.16, lon: 0.2 },
-  Salta: { lat: -0.28, lon: 0 },
+  Salta: { lat: -0.99, lon: 0 },
   'Entre Ríos': { lat: -0.02, lon: 0.14 },
   'Santa Fe': { lat: 0.04, lon: -0.06 },
   'La Rioja': { lat: 0.02, lon: -0.12 },
