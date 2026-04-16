@@ -97,6 +97,14 @@ const PROVINCE_ALIASES = {
   'TDF': 'Tierra del Fuego, Antártida e Islas del Atlántico Sur',
   'T. DEL FUEGO': 'Tierra del Fuego, Antártida e Islas del Atlántico Sur',
 
+  // Islas Malvinas
+  'ISLAS MALVINAS': 'Islas Malvinas',
+  'MALVINAS': 'Islas Malvinas',
+  'ISLAS MALVINAS (ARG.)': 'Islas Malvinas',
+  'ISLAS MALVINAS (ARGENTINA)': 'Islas Malvinas',
+  'FALKLAND': 'Islas Malvinas',
+  'FALKLAND ISLANDS': 'Islas Malvinas',
+
   // Tucumán
   'TUCUMAN': 'Tucumán',
   'TUCUMÁN': 'Tucumán',

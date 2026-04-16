@@ -67,9 +67,10 @@ body,
   background: #eef1f4;
 }
 
-/* En exportación se oculta la cartografía base para no mostrar países limítrofes. */
+/* El mapa base se mantiene visible en exportación; los limítrofes se tapan con una máscara vectorial.
+   Contraste y saturación reforzados para que los nombres de provincias del IGN se lean oscuros y nítidos. */
 .main-area.export-mode .map-container .leaflet-tile-pane {
-  display: none;
+  filter: contrast(1.9) brightness(0.84) saturate(0.65);
 }
 
 /* También se ocultan controles nativos de Leaflet en la imagen exportada. */
@@ -341,6 +342,11 @@ body,
   background: var(--bg-dark);
 }
 
+/* Realza texto y lineas del mapa base para que las etiquetas pre-renderizadas se noten mas. */
+.map-container .leaflet-tile-pane {
+  filter: contrast(1.18) brightness(0.94);
+}
+
 /* ===== Province Labels ===== */
 .province-label-marker {
   background: transparent;
@@ -378,6 +384,14 @@ body,
     0 -1px 0 rgba(255, 255, 255, 0.85);
   pointer-events: none;
   transition: font-size 0.12s ease-out, opacity 0.12s ease-out;
+}
+
+/* Labels en modo exportación: mismo tamaño que vista normal, solo se refuerza el contraste. */
+.main-area.export-mode .province-label {
+  color: #000 !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  border: 1px solid rgba(0, 0, 0, 0.25) !important;
+  text-shadow: none !important;
 }
 
 /* ===== Tooltip ===== */
@@ -580,7 +594,15 @@ body,
 
 .bicontinental-inset {
   width: 170px;
-  height: 250px;
+  /* height: 250px; */
+}
+
+.bicontinental-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #fff;
 }
 
 .caba-inset {
@@ -619,7 +641,35 @@ body,
   cursor: default !important;
 }
 
-/* ===== Export CABA callout ===== */
+/* ===== Barra de atribución (solo visible en imagen exportada) ===== */
+/*
+ * Ley N° 22.963 (Ley de la Carta): toda representación gráfica del territorio
+ * argentino debe ajustarse a la cartografía oficial del IGN y acreditarla.
+ * Este elemento se inyecta en el DOM solo durante la exportación (isExportingImage)
+ * para que quede embebido en el PNG resultante y la publicación sea conforme.
+ */
+.export-attribution {
+  display: none; /* Oculto en modo normal */
+}
+
+.main-area.export-mode .export-attribution {
+  display: block;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1300;
+  background: rgba(255, 255, 255, 0.93);
+  border-top: 1px solid #bbb;
+  font-size: 0.62rem;
+  color: #333;
+  padding: 4px 10px;
+  text-align: center;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+
 .export-caba-overlay {
   position: absolute;
   inset: 0;

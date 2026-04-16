@@ -5,9 +5,31 @@ import ExcelUploader from './ExcelUploader';
 import { COLOR_PALETTES } from '../utils/colorScales';
 import { toPng } from 'html-to-image';
 
+// Espera a que los tiles del mapa estén completamente cargados o al timeout.
+function waitForMapTiles(container, timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+
+    const checkLoaded = () => {
+      const tiles = [...container.querySelectorAll('.leaflet-tile')];
+      const allLoaded =
+        tiles.length > 0 && tiles.every((img) => img.complete && img.naturalWidth > 0);
+      const timedOut = Date.now() - start > timeoutMs;
+
+      if (allLoaded || timedOut) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(checkLoaded);
+    };
+
+    checkLoaded();
+  });
+}
+
 const PALETTE_LABELS = {
-  'azul-celeste': 'Azul → Celeste claro',
   'celeste-azul': 'Celeste claro → Azul',
+  'azul-celeste': 'Azul → Celeste claro',
   'morado-amarillo': 'Morado → Amarillo',
   heatmap: 'Heatmap',
 };
@@ -38,25 +60,6 @@ export default function ControlPanel() {
   const setIsExportingImage = useAppStore((s) => s.setIsExportingImage);
   const setExportCabaAnchorPoint = useAppStore((s) => s.setExportCabaAnchorPoint);
   const resetScale = useAppStore((s) => s.resetScale);
-
-  const waitForMapTiles = (container, timeoutMs = 5000) =>
-    new Promise((resolve) => {
-      const start = Date.now();
-
-      const checkLoaded = () => {
-        const tiles = [...container.querySelectorAll('.leaflet-tile')];
-        const allLoaded = tiles.length > 0 && tiles.every((img) => img.complete && img.naturalWidth > 0);
-        const timedOut = Date.now() - start > timeoutMs;
-
-        if (allLoaded || timedOut) {
-          resolve();
-          return;
-        }
-        requestAnimationFrame(checkLoaded);
-      };
-
-      checkLoaded();
-    });
 
   const handleExportImage = async () => {
     const node = document.getElementById('map-export-target');

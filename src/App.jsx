@@ -30,6 +30,12 @@ export default function App() {
           <BicontinentalInset />
         </div>
         <ExportCabaOverlay />
+        {isExportingImage && (
+          <div className="export-attribution" aria-label="Atribución cartográfica">
+            Cartografía oficial: Instituto Geográfico Nacional (IGN) · Ley N° 22.963 (Ley de la Carta) ·
+            Mapa base: Argenmap IGN · Límites: datos.gob.ar/georef · Datos temáticos: elaboración propia
+          </div>
+        )}
       </main>
     </div>
   );

@@ -7,14 +7,58 @@ import useColorScale from '../hooks/useColorScale';
 import geojsonRaw from '../data/argentina-provincias.json';
 import 'leaflet/dist/leaflet.css';
 
+const ARGENMAP_BASE_URL =
+  'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png';
+// Atribución requerida por Argenmap/IGN (ver https://www.ign.gob.ar/AreaServicios/Argenmap/Introduccion)
+const ARGENMAP_ATTRIBUTION =
+  'Leaflet | <a href="https://www.ign.gob.ar/AreaServicios/Argenmap/Introduccion" target="_blank" rel="noopener noreferrer">Instituto Geogr\u00e1fico Nacional</a> + <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>';
+
 const ARGENTINA_CENTER = [-40, -64];
 const ARGENTINA_ZOOM = 4;
 const GLOBAL_LABEL_SHIFT = { lat: 0, lon: -0.22 };
 const CABA_COORDS = [-34.6144, -58.4459];
+const WORLD_OUTER_RING = [
+  [-90, -180],
+  [-90, 180],
+  [90, 180],
+  [90, -180],
+];
+
+function ringToLatLngs(ring) {
+  return ring.map(([lng, lat]) => [lat, lng]);
+}
+
+function extractArgentinaOuterRings(geojson) {
+  const rings = [];
+
+  geojson.features.forEach((feature) => {
+    const geometry = feature.geometry;
+    if (!geometry?.coordinates) return;
+
+    if (geometry.type === 'Polygon') {
+      if (geometry.coordinates[0]) {
+        rings.push(ringToLatLngs(geometry.coordinates[0]));
+      }
+      return;
+    }
+
+    if (geometry.type === 'MultiPolygon') {
+      geometry.coordinates.forEach((polygon) => {
+        if (polygon?.[0]) {
+          rings.push(ringToLatLngs(polygon[0]));
+        }
+      });
+    }
+  });
+
+  return rings;
+}
+
+const ARGENTINA_HOLE_RINGS = extractArgentinaOuterRings(geojsonRaw);
 
 const CUSTOM_LABEL_COORDS = {
   'Tierra del Fuego, Antártida e Islas del Atlántico Sur': { lat: -54.55, lon: -67.65 },
-  'Islas Malvinas': { lat: -51.75, lon: -59.05 },
+  'Islas Malvinas': { lat: -50.75, lon: -58.08 },
 };
 
 // Ajustes finos por provincia para mejorar legibilidad.
@@ -41,9 +85,56 @@ const LABEL_NUDGES = {
 // Overrides de texto (acepta <br/> para multilinea).
 const LABEL_TEXT_OVERRIDES = {
   'Santiago del Estero': 'Santiago<br/>del<br/>Estero',
+  'Islas Malvinas': 'Islas Malvinas<br/>(Arg.)',
 };
 
 const ZERO_NUDGE = { lat: 0, lon: 0 };
+
+// Polígonos simplificados de las dos islas principales de Malvinas.
+// Coordenadas: [lon, lat] (formato GeoJSON estándar).
+const MALVINAS_GEOJSON = {
+  type: 'FeatureCollection',
+  features: [
+    {
+      type: 'Feature',
+      properties: { nombre: 'Islas Malvinas' },
+      geometry: {
+        type: 'MultiPolygon',
+        coordinates: [
+          // Isla Soledad (East Falkland)
+          [[
+            [-59.47, -51.25], [-59.15, -51.23], [-58.75, -51.22],
+            [-58.30, -51.35], [-57.92, -51.55], [-57.73, -51.85],
+            [-57.72, -52.20], [-58.15, -52.68], [-58.58, -52.73],
+            [-58.95, -52.57], [-59.43, -52.23], [-59.47, -51.75],
+            [-59.47, -51.25],
+          ]],
+          // Isla Gran Malvina (West Falkland)
+          [[
+            [-61.45, -51.72], [-61.32, -51.25], [-60.82, -51.17],
+            [-60.30, -51.20], [-59.70, -51.37], [-59.37, -51.62],
+            [-59.30, -51.95], [-59.55, -52.37], [-60.22, -52.43],
+            [-60.87, -52.28], [-61.30, -52.05], [-61.45, -51.95],
+            [-61.45, -51.72],
+          ]],
+        ],
+      },
+    },
+  ],
+};
+
+// Feature virtual de Malvinas para que ProvinceLabels genere su etiqueta.
+// La geometría es un punto en el centro; CUSTOM_LABEL_COORDS la reubicará al lugar correcto.
+const MALVINAS_LABEL_FEATURE = {
+  type: 'Feature',
+  properties: { nombre: 'Islas Malvinas' },
+  geometry: { type: 'Point', coordinates: [-59.05, -51.75] },
+};
+
+const geojsonWithMalvinas = {
+  ...geojsonRaw,
+  features: [...geojsonRaw.features, MALVINAS_LABEL_FEATURE],
+};
 
 function getZoomLabelSize(zoom) {
   if (zoom < 5) return 10;
@@ -110,6 +201,72 @@ function ExportCabaAnchorUpdater() {
   }, [isExportingImage, map, setExportCabaAnchorPoint]);
 
   return null;
+}
+
+function ExportNeighborMask() {
+  const map = useMap();
+  const isExportingImage = useAppStore((s) => s.isExportingImage);
+
+  useEffect(() => {
+    if (!isExportingImage) return undefined;
+
+    // Pane propio entre tilePane (z=200) y overlayPane (z=400) para que la máscara
+    // tape los tiles de países limítrofes pero quede DEBAJO de los polígonos provinciales.
+    if (!map.getPane('neighborMaskPane')) {
+      const pane = map.createPane('neighborMaskPane');
+      pane.style.zIndex = '250';
+      pane.style.pointerEvents = 'none';
+    }
+
+    const mask = L.polygon([WORLD_OUTER_RING, ...ARGENTINA_HOLE_RINGS], {
+      stroke: false,
+      fillColor: '#ffffff',
+      fillOpacity: 1,
+      interactive: false,
+      fillRule: 'evenodd',
+      pane: 'neighborMaskPane',
+    });
+
+    mask.addTo(map);
+
+    return () => {
+      map.removeLayer(mask);
+    };
+  }, [isExportingImage, map]);
+
+  return null;
+}
+
+function MalvinasLayer({ provinceValues, scale, isDataReady }) {
+  const setHoveredProvince = useAppStore((s) => s.setHoveredProvince);
+  const hoveredProvince = useAppStore((s) => s.hoveredProvince);
+
+  const value = provinceValues.get('Islas Malvinas');
+  const isHovered = hoveredProvince === 'Islas Malvinas';
+
+  const styleFunc = useCallback(() => ({
+    fillColor: value != null && isDataReady ? scale(value) : '#e0e0e0',
+    weight: isHovered ? 3.5 : 1.8,
+    opacity: 1,
+    color: isHovered ? '#222' : '#555',
+    fillOpacity: isHovered ? 0.9 : 0.75,
+  }), [value, isDataReady, scale, isHovered]);
+
+  const onEachFeature = useCallback((_feature, layer) => {
+    layer.on({
+      mouseover: () => setHoveredProvince('Islas Malvinas'),
+      mouseout: () => setHoveredProvince(null),
+    });
+  }, [setHoveredProvince]);
+
+  return (
+    <GeoJSON
+      key={`malvinas-${value}-${isHovered}`}
+      data={MALVINAS_GEOJSON}
+      style={styleFunc}
+      onEachFeature={onEachFeature}
+    />
+  );
 }
 
 function ProvinceLabels({ geojson }) {
@@ -213,9 +370,9 @@ function StyleUpdater({ layerRef, provinceValues, scale, isDataReady, hoveredPro
 
       layer.setStyle({
         fillColor: value != null && isDataReady ? scale(value) : '#e0e0e0',
-        weight: isHovered ? 3 : 1,
+        weight: isHovered ? 3.5 : 1.8,
         opacity: 1,
-        color: isHovered ? '#333' : '#666',
+        color: isHovered ? '#222' : '#555',
         fillOpacity: isHovered ? 0.9 : 0.75,
       });
 
@@ -238,9 +395,9 @@ const MapArgentina = memo(function MapArgentina() {
 
   const defaultStyle = useCallback(() => ({
     fillColor: '#e0e0e0',
-    weight: 1,
+    weight: 1.8,
     opacity: 1,
-    color: '#666',
+    color: '#555',
     fillOpacity: 0.75,
   }), []);
 
@@ -275,8 +432,11 @@ const MapArgentina = memo(function MapArgentina() {
         zoomAnimation={true}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
+          attribution={ARGENMAP_ATTRIBUTION}
+          url={ARGENMAP_BASE_URL}
+          minZoom={3}
+          maxZoom={18}
+          maxNativeZoom={18}
           crossOrigin="anonymous"
         />
         <GeoJSON
@@ -294,7 +454,8 @@ const MapArgentina = memo(function MapArgentina() {
             hoveredProvince={hoveredProvince}
           />
         )}
-        <ProvinceLabels geojson={geojsonRaw} />
+        <ProvinceLabels geojson={geojsonWithMalvinas} />
+        <ExportNeighborMask />
         <MapUpdater />
         <ExportCabaAnchorUpdater />
       </MapContainer>
