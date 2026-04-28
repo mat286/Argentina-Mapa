@@ -71,13 +71,15 @@ const LABEL_NUDGES = {
   Salta: { lat: -0.99, lon: 0 },
   'Entre Ríos': { lat: -0.02, lon: 0.14 },
   'Santa Fe': { lat: 0.04, lon: -0.06 },
-  'La Rioja': { lat: 0.02, lon: -0.12 },
+  'La Rioja': { lat: 0.52, lon: 0.52 },
+  'Santiago del Estero': { lat: 0, lon: 0.18 },
   'San Juan': { lat: -0.06, lon: -0.08 },
   Mendoza: { lat: 0.02, lon: -0.1 },
   Neuquén: { lat: 0.04, lon: -0.07 },
   Misiones: { lat: 0.02, lon: 0.08 },
   Corrientes: { lat: 0.02, lon: 0.06 },
-  'Río Negro': { lat: 0.04, lon: -0.08 },
+  Chaco: { lat: -0.58, lon: 0.5 },
+  'Río Negro': { lat: -0.08, lon: -0.08 },
   Chubut: { lat: 0.03, lon: -0.05 },
   'Santa Cruz': { lat: 0.06, lon: -0.07 },
 };
@@ -231,6 +233,38 @@ function ExportNeighborMask() {
 
     return () => {
       map.removeLayer(mask);
+    };
+  }, [isExportingImage, map]);
+
+  return null;
+}
+
+function ExportTierraDelFuegoConnector() {
+  const map = useMap();
+  const isExportingImage = useAppStore((s) => s.isExportingImage);
+
+  useEffect(() => {
+    if (!isExportingImage) return undefined;
+
+    // Trazo corto sobre el Estrecho de Magallanes para unir visualmente ambas costas.
+    const connector = L.polyline(
+      [
+        [-52.62, -68.36], // costa sur de Santa Cruz
+        [-52.92, -68.25], // costa norte de Tierra del Fuego
+      ],
+      {
+        color: '#5b5b5b',
+        weight: 1.6,
+        opacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round',
+        interactive: false,
+      }
+    );
+
+    connector.addTo(map);
+    return () => {
+      map.removeLayer(connector);
     };
   }, [isExportingImage, map]);
 
@@ -456,6 +490,7 @@ const MapArgentina = memo(function MapArgentina() {
         )}
         <ProvinceLabels geojson={geojsonWithMalvinas} />
         <ExportNeighborMask />
+        {/* <ExportTierraDelFuegoConnector /> */}
         <MapUpdater />
         <ExportCabaAnchorUpdater />
       </MapContainer>

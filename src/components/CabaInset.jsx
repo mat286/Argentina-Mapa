@@ -39,7 +39,8 @@ const contextStyle = {
 export default function CabaInset({ variant = 'default', className = '' }) {
   const { provinceValues, values, isDataReady } = useMapData();
   const { scale } = useColorScale(values);
-  const insetZoom = variant === 'export' ? 10 : 8;
+  /* const insetZoom = variant === 'export' ? 10 : 8; */
+  const insetZoom = variant === 'export' ? 7.5 : 8;
 
   const rootClassName = ['caba-inset', `caba-inset--${variant}`, className]
     .filter(Boolean)

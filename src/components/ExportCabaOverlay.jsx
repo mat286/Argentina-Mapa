@@ -4,11 +4,17 @@ import CabaInset from './CabaInset';
 const EXPORT_WIDTH = 793;
 const EXPORT_HEIGHT = 1123;
 
-const BOX = {
+/* const BOX = {
   left: 540,
   top: 455,
   width: 225,
   height: 205,
+}; */
+const BOX = {
+  left: 565,
+  top: 255,
+  width: 120,
+  height: 108,
 };
 
 export default function ExportCabaOverlay() {
